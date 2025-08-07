@@ -84,7 +84,7 @@ def generate_scene(idx: int) -> None:
         obstacles.append(
             Obstacle(category=cat, distance=dist, lateral=lat, weight=weight)
         )
-
+    
     def optimise_trajectory() -> tuple[list[TrajectoryPoint], float, Dict[str, float]]:
         """Solve a simple lane-keeping/obstacle-avoidance problem and record cost terms."""
 
