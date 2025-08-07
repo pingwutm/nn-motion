@@ -1,4 +1,4 @@
 torch==2.4.0
-theseus
+theseus-ai==0.2.3
 numpy
 matplotlib
