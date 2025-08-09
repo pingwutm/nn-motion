@@ -15,30 +15,34 @@ from nn_motion.optimizer import TheseusMotionOptimizer
 from nn_motion.problem import build_problem
 
 
-class WeightNet(nn.Module):
-    """Predict obstacle weights from scene and obstacle features."""
-
-    def __init__(self):
-        super().__init__()
-        self.mlp = nn.Sequential(
-            nn.Linear(7, 16),
-            nn.ReLU(),
-            nn.Linear(16, 1),
-            nn.Softplus(),  # ensure positive weights
-        )
-
-    def forward(self, features: torch.Tensor) -> torch.Tensor:
-        return self.mlp(features).squeeze(-1)
+@dataclass
+class Obstacle:
+    category: str
+    distance: float
+    lateral: float
 
 
-def obstacle_features(scene: Scene, obs: Obstacle) -> torch.Tensor:
-    cat_map = {"vehicle": [1, 0, 0], "pedestrian": [0, 1, 0], "cone": [0, 0, 1]}
-    has_sw = 1.0 if scene.has_sidewalk else 0.0
-    speed_n = scene.speed / 20.0
-    dist_n = obs.distance / 100.0
-    lat_n = obs.lateral / 3.0
-    return torch.tensor([has_sw, speed_n, dist_n, lat_n] + cat_map[obs.category], dtype=torch.float32)
+@dataclass
+class Scene:
+    speed: float
+    has_sidewalk: bool
+    obstacles: List[Obstacle]
+    trajectory: List[float]  # lateral positions only
 
+
+def load_scene(path: str) -> Scene:
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    obstacles = [
+        Obstacle(o["category"], o["distance"], o["lateral"]) for o in data["obstacles"]
+    ]
+    traj = [p["y"] for p in data["trajectory"]]
+    return Scene(
+        speed=data["speed"],
+        has_sidewalk=data["has_sidewalk"],
+        obstacles=obstacles,
+        trajectory=traj,
+    )
 
 def main(
     data_glob: str = "data/*.json",
@@ -91,6 +95,7 @@ def main(
 
     # print learned weights for first scene as a sanity check
     test_scene = dataset[0]
+
     for i, obs in enumerate(test_scene.obstacles):
         feats = obstacle_features(test_scene, obs)
         w = net(feats).item()
