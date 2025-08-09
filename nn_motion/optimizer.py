@@ -46,22 +46,31 @@ class TheseusMotionOptimizer:
             ) from _IMPORT_ERROR
         self.layer = problem_builder()
 
-    def solve(self, inputs: Dict[str, torch.Tensor]) -> OptimizationResult:
+    def solve(
+        self, inputs: Dict[str, torch.Tensor], detach: bool = False
+    ) -> OptimizationResult:
         """Solve the inner problem with the provided inputs.
 
         Parameters
         ----------
         inputs: Dict[str, torch.Tensor]
             Mapping from input names to tensors, including cost weights.
+        detach: bool, optional
+            If ``True``, the returned tensors are detached from the computation
+            graph.  This is useful for inference when gradients are not
+            required.  By default gradients are preserved so that an outer loss
+            can backpropagate through the solver.
 
         Returns
         -------
         OptimizationResult
             Result containing optimized controls and solver information.
         """
-        solution = self.layer.forward(inputs, {})
-        controls = {k: v.detach() for k, v in solution.items()}
-        info = {"status": "success"}
+        solution, info = self.layer.forward(inputs, {})
+        if detach:
+            controls = {k: v.detach() for k, v in solution.items()}
+        else:
+            controls = solution
         return OptimizationResult(controls=controls, solver_info=info)
 
 
